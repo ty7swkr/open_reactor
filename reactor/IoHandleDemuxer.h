@@ -40,15 +40,15 @@ public:
     EVENT_ERROR,
     EVENT_CLOSE,
 
-    EVENT_ADDED_ALL   = 10,
-    EVENT_ADDED_READ,
-    EVENT_ADDED_WRITE,
-    EVENT_ADDED_ERROR,
+    EVENT_REGISTER_ALL   = 10,
+    EVENT_REGISTER_READ,
+    EVENT_REGISTER_WRITE,
+    EVENT_REGISTER_ERROR,
 
-    EVENT_DELED_READ  = 20,
-    EVENT_DELED_WRITE,
-    EVENT_DELED_ERROR,
-    EVENT_DELED_ALL,
+    EVENT_REMOVE_READ  = 20,
+    EVENT_REMOVE_WRITE,
+    EVENT_REMOVE_ERROR,
+    EVENT_REMOVE_ALL,
 
     EVENT_USER = 100
   } RECV_EVENT;
@@ -102,6 +102,10 @@ public:
                              const bool         &return_event);
 
   void remove_all_events    (const io_handle_t  &io_handle,
+                             USER_DATA_T        user_data,
+                             const bool         &return_event);
+
+  void close_io_handle      (const io_handle_t  &io_handle,
                              USER_DATA_T        user_data,
                              const bool         &return_event);
 
@@ -183,56 +187,56 @@ IoHandleDemuxer<USER_DATA_T, default_value>::init(const int32_t &max_size,
   epoll_events_by_io_handle_.reserve(max_size);
   epoll_events_ = (struct epoll_event *)calloc(sizeof(struct epoll_event), epoll_max_events);
 
-  this->add_epoll_event(EVENT_READ, pipe_ctrl_event_recv_);
+  add_epoll_event(EVENT_READ, pipe_ctrl_event_recv_);
   return true;
 }
 
 template<typename USER_DATA_T, USER_DATA_T default_value> void
 IoHandleDemuxer<USER_DATA_T, default_value>::register_read_event(const io_handle_t &io_handle, USER_DATA_T user_data, const bool &return_event)
 {
-  this->raise_event(EVENT_ADDED_READ, io_handle, user_data, return_event);
+  raise_event(EVENT_REGISTER_READ, io_handle, user_data, return_event);
 }
 
 template<typename USER_DATA_T, USER_DATA_T default_value> void
 IoHandleDemuxer<USER_DATA_T, default_value>::register_write_event(const io_handle_t &io_handle, USER_DATA_T user_data, const bool &return_event)
 {
-  this->raise_event(EVENT_ADDED_WRITE, io_handle, user_data, return_event);
+  raise_event(EVENT_REGISTER_WRITE, io_handle, user_data, return_event);
 }
 
 template<typename USER_DATA_T, USER_DATA_T default_value> void
 IoHandleDemuxer<USER_DATA_T, default_value>::register_error_event(const io_handle_t &io_handle, USER_DATA_T user_data, const bool &return_event)
 {
-  this->raise_event(EVENT_ADDED_ERROR, io_handle, user_data, return_event);
+  raise_event(EVENT_REGISTER_ERROR, io_handle, user_data, return_event);
 }
 
 template<typename USER_DATA_T, USER_DATA_T default_value> void
 IoHandleDemuxer<USER_DATA_T, default_value>::register_all_events(const io_handle_t &io_handle, USER_DATA_T user_data, const bool &return_event)
 {
-  this->raise_event(EVENT_ADDED_ALL, io_handle, user_data, return_event);
+  raise_event(EVENT_REGISTER_ALL, io_handle, user_data, return_event);
 }
 
 template<typename USER_DATA_T, USER_DATA_T default_value> void
 IoHandleDemuxer<USER_DATA_T, default_value>::remove_read_event(const io_handle_t &io_handle, USER_DATA_T user_data, const bool &return_event)
 {
-  this->raise_event(EVENT_DELED_READ, io_handle, user_data, return_event);
+  raise_event(EVENT_REMOVE_READ, io_handle, user_data, return_event);
 }
 
 template<typename USER_DATA_T, USER_DATA_T default_value> void
 IoHandleDemuxer<USER_DATA_T, default_value>::remove_write_event(const io_handle_t &io_handle, USER_DATA_T user_data, const bool &return_event)
 {
-  this->raise_event(EVENT_DELED_WRITE, io_handle, user_data, return_event);
+  raise_event(EVENT_REMOVE_WRITE, io_handle, user_data, return_event);
 }
 
 template<typename USER_DATA_T, USER_DATA_T default_value> void
 IoHandleDemuxer<USER_DATA_T, default_value>::remove_error_event(const io_handle_t &io_handle, USER_DATA_T user_data, const bool &return_event)
 {
-  this->raise_event(EVENT_DELED_ERROR, io_handle, user_data, return_event);
+  raise_event(EVENT_REMOVE_ERROR, io_handle, user_data, return_event);
 }
 
 template<typename USER_DATA_T, USER_DATA_T default_value> void
 IoHandleDemuxer<USER_DATA_T, default_value>::remove_all_events(const io_handle_t &io_handle, USER_DATA_T user_data, const bool &return_event)
 {
-  this->raise_event(EVENT_DELED_ALL, io_handle, user_data, return_event);
+  raise_event(EVENT_REMOVE_ALL, io_handle, user_data, return_event);
 }
 
 template<typename USER_DATA_T, USER_DATA_T default_value> bool
@@ -252,7 +256,7 @@ std::deque<typename IoHandleDemuxer<USER_DATA_T, default_value>::EventData>
 IoHandleDemuxer<USER_DATA_T, default_value>::wait(const int32_t &timeout_msec)
 {
   std::deque<EventData> events;
-  this->wait(events, timeout_msec);
+  wait(events, timeout_msec);
   return events;
 }
 
@@ -388,19 +392,18 @@ IoHandleDemuxer<USER_DATA_T, default_value>::process_ctrl_event(std::deque<Event
 {
   switch (ctrl_events.type)
   {
-    case EVENT_ADDED_ALL  :
-      this->add_epoll_event(EVENT_READ,   ctrl_events.io_handle);
-      this->add_epoll_event(EVENT_WRITE,  ctrl_events.io_handle);
-      this->add_epoll_event(EVENT_ERROR,  ctrl_events.io_handle);
+    case EVENT_REGISTER_ALL  :
+      add_epoll_event(EVENT_READ,   ctrl_events.io_handle);
+      add_epoll_event(EVENT_WRITE,  ctrl_events.io_handle);
+      add_epoll_event(EVENT_ERROR,  ctrl_events.io_handle);
       break;
-    case EVENT_ADDED_READ : this->add_epoll_event(EVENT_READ,  ctrl_events.io_handle); break;
-    case EVENT_ADDED_WRITE: this->add_epoll_event(EVENT_WRITE, ctrl_events.io_handle); break;
-    case EVENT_ADDED_ERROR: this->add_epoll_event(EVENT_ERROR, ctrl_events.io_handle); break;
-
-    case EVENT_DELED_READ : this->del_epoll_event(EVENT_READ,  ctrl_events.io_handle); break;
-    case EVENT_DELED_WRITE: this->del_epoll_event(EVENT_WRITE, ctrl_events.io_handle); break;
-    case EVENT_DELED_ERROR: this->del_epoll_event(EVENT_ERROR, ctrl_events.io_handle); break;
-    case EVENT_DELED_ALL  : this->del_epoll_events(ctrl_events.io_handle); break;
+    case EVENT_REGISTER_READ  : add_epoll_event (EVENT_READ,  ctrl_events.io_handle); break;
+    case EVENT_REGISTER_WRITE : add_epoll_event (EVENT_WRITE, ctrl_events.io_handle); break;
+    case EVENT_REGISTER_ERROR : add_epoll_event (EVENT_ERROR, ctrl_events.io_handle); break;
+    case EVENT_REMOVE_READ    : del_epoll_event (EVENT_READ,  ctrl_events.io_handle); break;
+    case EVENT_REMOVE_WRITE   : del_epoll_event (EVENT_WRITE, ctrl_events.io_handle); break;
+    case EVENT_REMOVE_ERROR   : del_epoll_event (EVENT_ERROR, ctrl_events.io_handle); break;
+    case EVENT_REMOVE_ALL     : del_epoll_events(ctrl_events.io_handle); break;
     default: (void)ctrl_events.type; break;
   }
 

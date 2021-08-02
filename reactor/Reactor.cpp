@@ -70,7 +70,6 @@ Reactor::dispatch_demuxer_event_io(const EventHandlerIoDemuxer::EventData &event
 
         handle_close_call_.insert(handler.io_handle_);
         handler.handle_close(this);
-        //remove_event_handler(&handler);
         return;
       }
 
@@ -106,7 +105,6 @@ Reactor::dispatch_demuxer_event_io(const EventHandlerIoDemuxer::EventData &event
 
       handle_close_call_.insert(handler.io_handle_);
       handler.handle_close(this);
-      //remove_event_handler(&handler);
       return;
     }
   }
@@ -124,7 +122,7 @@ Reactor::dispatch_demuxer_event_result(const EventHandlerIoDemuxer::EventData &e
 
   switch (event.type)
   {
-    case EventHandlerIoDemuxer::EVENT_ADDED_READ:
+    case EventHandlerIoDemuxer::EVENT_REGISTER_READ:
     {
       ++handler_count_;
       handlers_.emplace(std::make_pair(event.io_handle, handler));
@@ -136,7 +134,7 @@ Reactor::dispatch_demuxer_event_result(const EventHandlerIoDemuxer::EventData &e
 
       return;
     }
-    case EventHandlerIoDemuxer::EVENT_DELED_ALL:
+    case EventHandlerIoDemuxer::EVENT_REMOVE_ALL:
     {
       if (handlers_.count(event.io_handle) == 0)
         return;
