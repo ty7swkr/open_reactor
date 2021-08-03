@@ -73,7 +73,8 @@ Reactor::dispatch_demuxer_event_io(const EventHandlerIoDemuxer::EventData &event
         return;
       }
 
-      handler.handle_input(this);
+      if (recv_size > 0)
+        handler.handle_input(this);
       return;
     }
     case EventHandlerIoDemuxer::EVENT_WRITE:

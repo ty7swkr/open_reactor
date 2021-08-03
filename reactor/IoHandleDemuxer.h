@@ -455,9 +455,6 @@ IoHandleDemuxer<USER_DATA_T, default_value>::wait(std::deque<EventData> &return_
       // impossible
       // if (epoll_events_by_io_handle_.count(io_handle) == 0)
       //   continue;
-      if ((event.events & EPOLLRDHUP) || (event.events & EPOLLHUP))
-        return_events.emplace_back(EVENT_CLOSE, io_handle);
-
       if (event.events & EPOLLIN)
         return_events.emplace_back(EVENT_READ,  io_handle);
 
@@ -466,6 +463,9 @@ IoHandleDemuxer<USER_DATA_T, default_value>::wait(std::deque<EventData> &return_
 
       if (event.events & EPOLLERR)
         return_events.emplace_back(EVENT_ERROR, io_handle);
+
+      if ((event.events & EPOLLRDHUP) || (event.events & EPOLLHUP))
+        return_events.emplace_back(EVENT_CLOSE, io_handle);
     }
 
     return 0;
