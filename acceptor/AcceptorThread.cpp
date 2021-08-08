@@ -66,7 +66,6 @@ AcceptorThread::run()
     event_handler = handler_factory_.create(reactor);
     if (event_handler == nullptr)
     {
-      ::shutdown(client_io_handle, SHUT_RD);
       ::close(client_io_handle);
       return;
     }

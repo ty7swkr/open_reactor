@@ -60,21 +60,7 @@ Reactor::dispatch_demuxer_event_io(const EventHandlerIoDemuxer::EventData &event
   {
     case EventHandlerIoDemuxer::EVENT_READ:
     {
-      static char buff;
-      int recv_size = ::recv(handler.io_handle_, &buff, 1, MSG_PEEK);
-      if (recv_size == 0)
-      {
-        // Call handle_close
-        if (handle_close_call_.count(handler.io_handle_) > 0)
-          return;
-
-        handle_close_call_.insert(handler.io_handle_);
-        handler.handle_close(this);
-        return;
-      }
-
-      if (recv_size > 0)
-        handler.handle_input(this);
+      handler.handle_input(this);
       return;
     }
     case EventHandlerIoDemuxer::EVENT_WRITE:
@@ -159,6 +145,9 @@ Reactor::run()
 {
   stop_ = false;
 
+  std::vector<EventHandlerIoDemuxer::EventData> events;
+  events.reserve(10000);
+
   run_reactor_handler();
 
   while (true)
@@ -167,7 +156,8 @@ Reactor::run()
     while ((msec = timer_.get_min_timeout_milliseconds()) == 0)
       run_timeout_handler();
 
-    std::deque<EventHandlerIoDemuxer::EventData> events = demuxer_.wait(msec);
+    events.clear();
+    demuxer_.wait(events, msec);
 
     // timeout
     if (events.size() == 0)

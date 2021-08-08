@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <utility>
 #include <atomic>
-#include <deque>
+#include <vector>
 #include <mutex>
 #include <thread>
 
@@ -113,11 +113,11 @@ public:
                              const io_handle_t  &io_handle = INVALID_IO_HANDLE,
                              USER_DATA_T        user_data = default_value);
 
-  std::deque<EventData>
+  std::vector<EventData>
   wait(const int32_t &timeout_msec = -1);
 
   int
-  wait(std::deque<EventData> &return_events,
+  wait(std::vector<EventData> &return_events,
        const int32_t         &timeout_msec = -1);
 
 private:
@@ -140,7 +140,7 @@ private:
   int           pipe_ctrl_event_recv_ = INVALID_IO_HANDLE;
   int           pipe_ctrl_event_send_ = INVALID_IO_HANDLE;
   CtrlEventData pipe_ctrl_events_buffer[100000];
-  std::deque<CtrlEventData> wait_thread_events_;
+  std::vector<CtrlEventData> wait_thread_events_;
 
   private:
   void raise_event        (const int32_t     &event_type,
@@ -148,10 +148,10 @@ private:
                            USER_DATA_T       user_data,
                            const bool        &return_event);
 
-  void process_ctrl_events(std::deque<EventData>            &return_events,
-                           const std::deque<CtrlEventData>  &ctrl_events);
+  void process_ctrl_events(std::vector<EventData>            &return_events,
+                           const std::vector<CtrlEventData>  &ctrl_events);
 
-  void process_ctrl_event (std::deque<EventData>  &return_events,
+  void process_ctrl_event (std::vector<EventData> &return_events,
                            const CtrlEventData    &event);
 
   void add_epoll_event    (const int32_t &event_type, const io_handle_t &io_handle);
@@ -186,6 +186,8 @@ IoHandleDemuxer<USER_DATA_T, default_value>::init(const int32_t &max_size,
 
   epoll_events_by_io_handle_.reserve(max_size);
   epoll_events_ = (struct epoll_event *)calloc(sizeof(struct epoll_event), epoll_max_events);
+
+  wait_thread_events_.reserve(max_size);
 
   add_epoll_event(EVENT_READ, pipe_ctrl_event_recv_);
   return true;
@@ -252,10 +254,10 @@ IoHandleDemuxer<USER_DATA_T, default_value>::raise_user_event(const int32_t     
 }
 
 template<typename USER_DATA_T, USER_DATA_T default_value>
-std::deque<typename IoHandleDemuxer<USER_DATA_T, default_value>::EventData>
+std::vector<typename IoHandleDemuxer<USER_DATA_T, default_value>::EventData>
 IoHandleDemuxer<USER_DATA_T, default_value>::wait(const int32_t &timeout_msec)
 {
-  std::deque<EventData> events;
+  std::vector<EventData> events;
   wait(events, timeout_msec);
   return events;
 }
@@ -281,8 +283,8 @@ IoHandleDemuxer<USER_DATA_T, default_value>::raise_event(const int32_t     &even
 }
 
 template<typename USER_DATA_T, USER_DATA_T default_value> void
-IoHandleDemuxer<USER_DATA_T, default_value>::process_ctrl_events(std::deque<EventData>           &return_events,
-                                                                 const std::deque<CtrlEventData> &ctrl_events)
+IoHandleDemuxer<USER_DATA_T, default_value>::process_ctrl_events(std::vector<EventData>           &return_events,
+                                                                 const std::vector<CtrlEventData> &ctrl_events)
 {
   for (const CtrlEventData &event : ctrl_events)
     process_ctrl_event(return_events, event);
@@ -387,7 +389,7 @@ IoHandleDemuxer<USER_DATA_T, default_value>::del_epoll_events(const io_handle_t 
 }
 
 template<typename USER_DATA_T, USER_DATA_T default_value> void
-IoHandleDemuxer<USER_DATA_T, default_value>::process_ctrl_event(std::deque<EventData>  &return_events,
+IoHandleDemuxer<USER_DATA_T, default_value>::process_ctrl_event(std::vector<EventData> &return_events,
                                                                 const CtrlEventData    &ctrl_events)
 {
   switch (ctrl_events.type)
@@ -412,8 +414,8 @@ IoHandleDemuxer<USER_DATA_T, default_value>::process_ctrl_event(std::deque<Event
 }
 
 template<typename USER_DATA_T, USER_DATA_T default_value> int
-IoHandleDemuxer<USER_DATA_T, default_value>::wait(std::deque<EventData> &return_events,
-                                                  const int32_t         &timeout_msec)
+IoHandleDemuxer<USER_DATA_T, default_value>::wait(std::vector<EventData> &return_events,
+                                                  const int32_t          &timeout_msec)
 {
   wait_thread_id_ = std::this_thread::get_id();
 
@@ -455,10 +457,11 @@ IoHandleDemuxer<USER_DATA_T, default_value>::wait(std::deque<EventData> &return_
       // impossible
       // if (epoll_events_by_io_handle_.count(io_handle) == 0)
       //   continue;
-      if (event.events & EPOLLIN)
+      static char buff[1];
+      if ((event.events & EPOLLIN) && (::recv(io_handle, &buff, 1, MSG_PEEK) > 0))
         return_events.emplace_back(EVENT_READ,  io_handle);
 
-      if (event.events & EPOLLOUT)
+      if ((event.events & EPOLLOUT) && !(event.events & EPOLLERR))
         return_events.emplace_back(EVENT_WRITE, io_handle);
 
       if (event.events & EPOLLERR)

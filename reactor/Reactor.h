@@ -61,7 +61,7 @@ private:
     EVENT_STOP
   };
 
-  bool dispatch                     (const std::deque<EventHandlerIoDemuxer::EventData> &events);
+  bool dispatch                     (const std::vector<EventHandlerIoDemuxer::EventData> &events);
   void dispatch_reactor_event       (const EventHandlerIoDemuxer::EventData &event,
                                      bool &is_stop_event);
   void dispatch_demuxer_event_io    (const EventHandlerIoDemuxer::EventData &event);
@@ -184,7 +184,7 @@ Reactor::stop()
 }
 
 inline bool
-Reactor::dispatch(const std::deque<EventHandlerIoDemuxer::EventData> &events)
+Reactor::dispatch(const std::vector<EventHandlerIoDemuxer::EventData> &events)
 {
   bool is_stop_event = false;
   for (const EventHandlerIoDemuxer::EventData &event : events)

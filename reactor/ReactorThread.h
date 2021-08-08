@@ -45,6 +45,11 @@ public:
     thread_ = nullptr;
   }
 
+  bool is_run() const
+  {
+    return is_run_;
+  }
+
 protected:
   void run()
   {
